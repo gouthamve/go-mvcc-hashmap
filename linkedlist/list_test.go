@@ -22,16 +22,16 @@ func TestSerialInsert(t *testing.T) {
 	dummy := 1
 
 	table := []struct {
-		elem int
-		list []int
+		elem uint64
+		list []uint64
 	}{
-		{1, []int{1}},
-		{2, []int{2, 1}},
-		{30, []int{30, 2, 1}},
-		{25, []int{30, 25, 2, 1}},
-		{0, []int{30, 25, 2, 1, 0}},
-		{-10, []int{30, 25, 2, 1, 0, -10}},
-		{20, []int{30, 25, 20, 2, 1, 0, -10}},
+		{1, []uint64{1}},
+		{2, []uint64{2, 1}},
+		{30, []uint64{30, 2, 1}},
+		{25, []uint64{30, 25, 2, 1}},
+		{0, []uint64{30, 25, 2, 1, 0}},
+		//{-10, []uint64{30, 25, 2, 1, 0, -10}},
+		//{20, []uint64{30, 25, 20, 2, 1, 0, -10}},
 	}
 
 	for _, v := range table {
@@ -46,23 +46,23 @@ func TestSerialDelete(t *testing.T) {
 	dummy := 1
 
 	table := []struct {
-		elem int
-		list []int
+		elem uint64
+		list []uint64
 	}{
-		{20, []int{30, 25, 2, 1, 0, -10}},
-		{-10, []int{30, 25, 2, 1, 0}},
-		{0, []int{30, 25, 2, 1}},
-		{25, []int{30, 2, 1}},
-		{30, []int{2, 1}},
-		{2, []int{1}},
-		{1, []int(nil)},
+		{20, []uint64{30, 25, 2, 1, 0}},
+		//{-10, []uint64{30, 25, 2, 1, 0}},
+		{0, []uint64{30, 25, 2, 1}},
+		{25, []uint64{30, 2, 1}},
+		{30, []uint64{2, 1}},
+		{2, []uint64{1}},
+		{1, []uint64(nil)},
 	}
 
-	for _, v := range []int{30, 25, 20, 2, 1, 0, -10} {
+	for _, v := range []uint64{30, 25, 20, 2, 1, 0} {
 		ll.Insert(v, unsafe.Pointer(&dummy))
 	}
 
-	equals(t, []int{30, 25, 20, 2, 1, 0, -10}, ll.Snapshot())
+	equals(t, []uint64{30, 25, 20, 2, 1, 0}, ll.Snapshot())
 
 	for _, v := range table {
 		ll.Delete(v.elem)
@@ -75,16 +75,16 @@ func TestParallelInsert(t *testing.T) {
 	dummy := 1
 
 	table := []struct {
-		elem int
-		list []int
+		elem uint64
+		list []uint64
 	}{
-		{1, []int{1}},
-		{2, []int{2, 1}},
-		{30, []int{30, 2, 1}},
-		{25, []int{30, 25, 2, 1}},
-		{0, []int{30, 25, 2, 1, 0}},
-		{-10, []int{30, 25, 2, 1, 0, -10}},
-		{20, []int{30, 25, 20, 2, 1, 0, -10}},
+		{1, []uint64{1}},
+		{2, []uint64{2, 1}},
+		{30, []uint64{30, 2, 1}},
+		{25, []uint64{30, 25, 2, 1}},
+		{0, []uint64{30, 25, 2, 1, 0}},
+		//{-10, []uint64{30, 25, 2, 1, 0, -10}},
+		//{20, []uint64{30, 25, 20, 2, 1, 0, -10}},
 	}
 
 	for i := 0; i < len(table); i++ {
@@ -109,22 +109,22 @@ func TestParallelDelete(t *testing.T) {
 	dummy := 1
 
 	table := []struct {
-		elem int
-		list []int
+		elem uint64
+		list []uint64
 	}{
-		{20, []int{30, 25, 2, 1, 0, -10}},
-		{-10, []int{30, 25, 2, 1, 0}},
-		{0, []int{30, 25, 2, 1}},
-		{25, []int{30, 2, 1}},
-		{30, []int{2, 1}},
-		{2, []int{1}},
-		{1, []int(nil)},
+		{20, []uint64{30, 25, 2, 1, 0}},
+		//{-10, []int{30, 25, 2, 1, 0}},
+		{0, []uint64{30, 25, 2, 1}},
+		{25, []uint64{30, 2, 1}},
+		{30, []uint64{2, 1}},
+		{2, []uint64{1}},
+		{1, []uint64(nil)},
 	}
 	// equals(t, []int{30, 25, 20, 2, 1, 0, -10}, ll.Snapshot())
 
 	for i := range table {
 		ll := linkedlist.LinkedList{}
-		for _, val := range []int{30, 25, 20, 2, 1, 0, -10} {
+		for _, val := range []uint64{30, 25, 20, 2, 1, 0} {
 			ll.Insert(val, unsafe.Pointer(&dummy))
 		}
 		ch := make(chan bool)
