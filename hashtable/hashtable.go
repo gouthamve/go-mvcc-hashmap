@@ -15,7 +15,13 @@ type Hashtable struct {
 
 	// TODO: Make pointer. The comparision takes time??
 	values []*linkedlist.LinkedList
-	txn    uint64
+
+	txnCtr uint64
+
+	// Last Successful Txn
+	lsTxn uint64
+	// TODO: For mulitple writers
+	//txnTable map[uint64]bool
 }
 
 // KeyType is the key
@@ -42,6 +48,9 @@ func newHT(size, maxReach int) *Hashtable {
 
 		h.insert(0, &KVType{}, i)
 	}
+
+	h.lsTxn = 0
+	h.txnCtr = 0
 	return &h
 }
 
@@ -70,7 +79,7 @@ func (h *Hashtable) insert(txn uint64, kv *KVType, idx int) error {
 // ANNY: This is the key part. See how the rollback happens
 func (h *Hashtable) Put(kv KVType) error {
 	// NOTE: The rollback will be via the abandoning of the txn
-	txn := atomic.AddUint64(&h.txn, 1)
+	txn := atomic.AddUint64(&h.txnCtr, 1)
 	current := &kv
 
 	for i := 0; i < h.maxReach; i++ {
@@ -78,6 +87,7 @@ func (h *Hashtable) Put(kv KVType) error {
 		temp := (*KVType)(h.values[idx].Head())
 		if (*temp == KVType{}) {
 			h.insert(txn, current, idx)
+			h.lsTxn = txn
 			return nil
 		}
 
@@ -85,6 +95,7 @@ func (h *Hashtable) Put(kv KVType) error {
 		temp = (*KVType)(h.values[idx].Head())
 		if (*temp == KVType{}) {
 			h.insert(txn, current, idx)
+			h.lsTxn = txn
 			return nil
 		}
 
@@ -99,14 +110,19 @@ func (h *Hashtable) Put(kv KVType) error {
 
 // Get gets the keyvalue pair back
 func (h *Hashtable) Get(k KeyType) (bool, ValType) {
+	// NOTE: Make this serialised when we deal with mulitple
+	// writers
+	version := h.lsTxn
+
 	idx := h.hash1(k)
-	val := (*KVType)(h.values[idx].Head())
+	// No nil check needed as we are filling version 0
+	val := (*KVType)(h.values[idx].LatestVersion(version))
 	if (*val != KVType{} && val.Key == k) {
 		return true, val.Val
 	}
 
 	idx = h.hash2(k)
-	val = (*KVType)(h.values[idx].Head())
+	val = (*KVType)(h.values[idx].LatestVersion(version))
 	if (*val != KVType{} && val.Key == k) {
 		return true, val.Val
 	}

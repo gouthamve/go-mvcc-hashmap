@@ -140,6 +140,21 @@ func (ll *LinkedList) Head() unsafe.Pointer {
 	return ll.head.object
 }
 
+// LatestVersion returns the node that has a version equal to
+// or less than the version given
+func (ll *LinkedList) LatestVersion(v uint64) unsafe.Pointer {
+	cur := ll.head
+	for cur != nil && cur.version > v {
+		cur = cur.next
+	}
+
+	if cur == nil {
+		return nil
+	}
+
+	return cur.object
+}
+
 // Snapshot gets the current Snapshot.
 // For debugging only
 func (ll *LinkedList) Snapshot() (s []uint64) {
