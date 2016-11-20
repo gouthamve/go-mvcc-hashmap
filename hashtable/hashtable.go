@@ -2,6 +2,7 @@ package hashtable
 
 import (
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"unsafe"
 
@@ -22,6 +23,8 @@ type Hashtable struct {
 	lsTxn uint64
 	// TODO: For mulitple writers
 	//txnTable map[uint64]bool
+
+	sync.Mutex
 }
 
 // KeyType is the key
@@ -78,9 +81,12 @@ func (h *Hashtable) insert(txn uint64, kv *KVType, idx int) error {
 // Put puts the kv into the hashtable
 // ANNY: This is the key part. See how the rollback happens
 func (h *Hashtable) Put(kv KVType) error {
+	h.Lock()
+	defer h.Unlock()
 	// NOTE: The rollback will be via the abandoning of the txn
 	txn := atomic.AddUint64(&h.txnCtr, 1)
 	current := &kv
+	idxMod := make([]int, h.maxReach)
 
 	for i := 0; i < h.maxReach; i++ {
 		idx := h.hash1(current.Key)
@@ -101,9 +107,14 @@ func (h *Hashtable) Put(kv KVType) error {
 
 		// Take the key from the second slot
 		h.insert(txn, current, idx)
+		idxMod[i] = idx
 		current = temp
 	}
 	// Abandon the txn
+	// Delete the elements of the current txn
+	for i := 0; i < h.maxReach; i++ {
+		h.values[idxMod[i]].Delete(txn)
+	}
 
 	return fmt.Errorf("Key %d couldn't be inserted due to a tight table", kv.Key)
 }
@@ -130,40 +141,24 @@ func (h *Hashtable) Get(k KeyType) (bool, ValType) {
 	return false, 0
 }
 
-// DeleteUni deletes the single KV pair given
-//func (h *Hashtable) DeleteUni(k KVType) (bool, error) {
-//idx := h.hash1(k.Key)
-//val := h.values[idx]
-//if (val != KVType{} && val.Key == k.Key && val.Val == k.Val) {
-//h.values[idx] = KVType{}
-//return true, nil
-//}
+// Delete deletes all the elements with the key
+func (h *Hashtable) Delete(k KeyType) (bool, error) {
+	h.Lock()
+	defer h.Unlock()
+	txn := atomic.AddUint64(&h.txnCtr, 1)
+	idx := h.hash1(k)
+	val := (*KVType)(h.values[idx].LatestVersion(h.lsTxn))
+	if (*val != KVType{} && val.Key == k) {
+		h.insert(txn, &KVType{}, idx)
+		return true, nil
+	}
 
-//idx = h.hash2(k)
-//val = (*KVType) (h.values[idx].Head())
-//if (*val != KVType{} && val.Key == k.Key && val.Val == k.Val) {
-//h.values[idx] = KVType{}
-//return true, nil
-//}
+	idx = h.hash2(k)
+	val = (*KVType)(h.values[idx].LatestVersion(h.lsTxn))
+	if (*val != KVType{} && val.Key == k) {
+		h.insert(txn, &KVType{}, idx)
+		return true, nil
+	}
 
-//return false, nil
-//}
-
-//// Delete deletes all the elements with the key
-//func (h *Hashtable) Delete(k KeyType) (bool, error) {
-//idx := h.hash1(k)
-//val := h.values[idx]
-//if (val != KVType{} && val.Key == k.Key) {
-//h.values[idx] = KVType{}
-//return true, nil
-//}
-
-//idx = h.hash2(k)
-//val = h.values[idx]
-//if (val != KVType{} && val.Key == k.Key) {
-//h.values[idx] = KVType{}
-//return true, nil
-//}
-
-//return false, nil
-//}
+	return false, nil
+}

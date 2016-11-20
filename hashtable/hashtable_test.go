@@ -61,6 +61,33 @@ func TestParallelRead(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
+	mp := make(map[hashtable.KeyType]hashtable.ValType)
+	h := hashtable.NewDefaultHT()
+
+	for i := 0; i < 100; i++ {
+		kv := hashtable.KVType{
+			Key: hashtable.KeyType(rand.Int()),
+			Val: hashtable.ValType(rand.Int()),
+		}
+
+		mp[kv.Key] = kv.Val
+		ok(t, h.Put(kv))
+	}
+
+	for k := range mp {
+		if rand.Float64() > 0.5 {
+			h.Delete(k)
+			delete(mp, k)
+		}
+	}
+
+	for k, v := range mp {
+		go func(k hashtable.KeyType, v hashtable.ValType) {
+			exists, val := h.Get(k)
+			assert(t, exists, "Expected key %d to exist", k)
+			equals(t, v, val)
+		}(k, v)
+	}
 }
 
 // assert fails the test if the condition is false.
